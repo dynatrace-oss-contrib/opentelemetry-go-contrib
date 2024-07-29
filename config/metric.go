@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -165,6 +166,21 @@ func otlpHTTPMetricExporter(ctx context.Context, otlpConfig *OTLPMetric) (sdkmet
 	}
 	if len(otlpConfig.Headers) > 0 {
 		opts = append(opts, otlpmetrichttp.WithHeaders(otlpConfig.Headers))
+	}
+	if otlpConfig.TemporalityPreference != nil {
+		switch *otlpConfig.TemporalityPreference {
+		case "cumulative":
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(func(ik sdkmetric.InstrumentKind) metricdata.Temporality { return metricdata.CumulativeTemporality }))
+
+		case "delta":
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(func(ik sdkmetric.InstrumentKind) metricdata.Temporality { return metricdata.DeltaTemporality }))
+
+		// TODO what about 'lowmemory' (stateless) temporality?
+
+		default:
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(sdkmetric.DefaultTemporalitySelector))
+		}
+
 	}
 
 	return otlpmetrichttp.New(ctx, opts...)
