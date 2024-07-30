@@ -251,6 +251,20 @@ func otlpGRPCMetricExporter(ctx context.Context, otlpConfig *OTLPMetric) (sdkmet
 	if len(otlpConfig.Headers) > 0 {
 		opts = append(opts, otlpmetricgrpc.WithHeaders(otlpConfig.Headers))
 	}
+	if otlpConfig.TemporalityPreference != nil {
+		switch *otlpConfig.TemporalityPreference {
+		case "cumulative":
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceCumulative))
+
+		case "delta":
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceDeltaPreferred))
+
+		case "lowmemory":
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceLowMemory))
+
+		default:
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(sdkmetric.DefaultTemporalitySelector))
+		}
 
 	return otlpmetricgrpc.New(ctx, opts...)
 }
