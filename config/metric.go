@@ -170,20 +170,46 @@ func otlpHTTPMetricExporter(ctx context.Context, otlpConfig *OTLPMetric) (sdkmet
 	if otlpConfig.TemporalityPreference != nil {
 		switch *otlpConfig.TemporalityPreference {
 		case "cumulative":
-			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(func(ik sdkmetric.InstrumentKind) metricdata.Temporality { return metricdata.CumulativeTemporality }))
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceCumulative))
 
 		case "delta":
-			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(func(ik sdkmetric.InstrumentKind) metricdata.Temporality { return metricdata.DeltaTemporality }))
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceDeltaPreferred))
 
-		// TODO what about 'lowmemory' (stateless) temporality?
+		case "lowmemory":
+			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceLowMemory))
 
 		default:
 			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(sdkmetric.DefaultTemporalitySelector))
 		}
-
 	}
 
 	return otlpmetrichttp.New(ctx, opts...)
+}
+
+func temporalityPreferenceCumulative(ik sdkmetric.InstrumentKind) metricdata.Temporality {
+	return metricdata.CumulativeTemporality
+}
+
+func temporalityPreferenceDeltaPreferred(ik sdkmetric.InstrumentKind) metricdata.Temporality {
+	switch ik {
+	case sdkmetric.InstrumentKindCounter, sdkmetric.InstrumentKindObservableCounter, sdkmetric.InstrumentKindHistogram:
+		return metricdata.DeltaTemporality
+	case sdkmetric.InstrumentKindObservableUpDownCounter, sdkmetric.InstrumentKindUpDownCounter:
+		return metricdata.CumulativeTemporality
+	default:
+		return metricdata.DeltaTemporality
+	}
+}
+
+func temporalityPreferenceLowMemory(ik sdkmetric.InstrumentKind) metricdata.Temporality {
+	switch ik {
+	case sdkmetric.InstrumentKindCounter, sdkmetric.InstrumentKindHistogram:
+		return metricdata.DeltaTemporality
+	case sdkmetric.InstrumentKindObservableCounter, sdkmetric.InstrumentKindObservableUpDownCounter, sdkmetric.InstrumentKindUpDownCounter:
+		return metricdata.CumulativeTemporality
+	default:
+		return metricdata.DeltaTemporality
+	}
 }
 
 func otlpGRPCMetricExporter(ctx context.Context, otlpConfig *OTLPMetric) (sdkmetric.Exporter, error) {
