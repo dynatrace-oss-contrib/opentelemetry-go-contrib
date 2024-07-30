@@ -171,15 +171,10 @@ func otlpHTTPMetricExporter(ctx context.Context, otlpConfig *OTLPMetric) (sdkmet
 		switch *otlpConfig.TemporalityPreference {
 		case "cumulative":
 			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceCumulative))
-
 		case "delta":
 			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceDeltaPreferred))
-
 		case "lowmemory":
 			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceLowMemory))
-
-		default:
-			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(sdkmetric.DefaultTemporalitySelector))
 		}
 	}
 	if otlpConfig.DefaultHistogramAggregation != nil {
