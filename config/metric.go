@@ -280,15 +280,10 @@ func otlpGRPCMetricExporter(ctx context.Context, otlpConfig *OTLPMetric) (sdkmet
 		switch *otlpConfig.TemporalityPreference {
 		case "cumulative":
 			opts = append(opts, otlpmetricgrpc.WithTemporalitySelector(temporalityPreferenceCumulative))
-
 		case "delta":
 			opts = append(opts, otlpmetricgrpc.WithTemporalitySelector(temporalityPreferenceDeltaPreferred))
-
 		case "lowmemory":
 			opts = append(opts, otlpmetricgrpc.WithTemporalitySelector(temporalityPreferenceLowMemory))
-
-		default:
-			opts = append(opts, otlpmetricgrpc.WithTemporalitySelector(sdkmetric.DefaultTemporalitySelector))
 		}
 	}
 	if otlpConfig.DefaultHistogramAggregation != nil {
