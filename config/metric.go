@@ -182,8 +182,33 @@ func otlpHTTPMetricExporter(ctx context.Context, otlpConfig *OTLPMetric) (sdkmet
 			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(sdkmetric.DefaultTemporalitySelector))
 		}
 	}
+	if otlpConfig.DefaultHistogramAggregation != nil {
+		switch *otlpConfig.DefaultHistogramAggregation {
+		case "explicit_bucket_histogram":
+			opts = append(opts, otlpmetrichttp.WithAggregationSelector(aggregationPreferenceExplicitBucketHistogram))
+		case "base2_exponential_bucket_histogram":
+			opts = append(opts, otlpmetrichttp.WithAggregationSelector(aggregationPreferenceExponentialHistogram))
+		}
+	}
 
 	return otlpmetrichttp.New(ctx, opts...)
+}
+
+func aggregationPreferenceExplicitBucketHistogram(ik sdkmetric.InstrumentKind) sdkmetric.Aggregation {
+	if ik == sdkmetric.InstrumentKindHistogram {
+		return sdkmetric.AggregationExplicitBucketHistogram{
+			Boundaries: []float64{0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000},
+			NoMinMax:   false,
+		}
+	}
+	return sdkmetric.DefaultAggregationSelector(ik)
+}
+
+func aggregationPreferenceExponentialHistogram(ik sdkmetric.InstrumentKind) sdkmetric.Aggregation {
+	if ik == sdkmetric.InstrumentKindHistogram {
+		return sdkmetric.AggregationBase2ExponentialHistogram{}
+	}
+	return sdkmetric.DefaultAggregationSelector(ik)
 }
 
 func temporalityPreferenceCumulative(ik sdkmetric.InstrumentKind) metricdata.Temporality {
@@ -254,17 +279,26 @@ func otlpGRPCMetricExporter(ctx context.Context, otlpConfig *OTLPMetric) (sdkmet
 	if otlpConfig.TemporalityPreference != nil {
 		switch *otlpConfig.TemporalityPreference {
 		case "cumulative":
-			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceCumulative))
+			opts = append(opts, otlpmetricgrpc.WithTemporalitySelector(temporalityPreferenceCumulative))
 
 		case "delta":
-			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceDeltaPreferred))
+			opts = append(opts, otlpmetricgrpc.WithTemporalitySelector(temporalityPreferenceDeltaPreferred))
 
 		case "lowmemory":
-			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(temporalityPreferenceLowMemory))
+			opts = append(opts, otlpmetricgrpc.WithTemporalitySelector(temporalityPreferenceLowMemory))
 
 		default:
-			opts = append(opts, otlpmetrichttp.WithTemporalitySelector(sdkmetric.DefaultTemporalitySelector))
+			opts = append(opts, otlpmetricgrpc.WithTemporalitySelector(sdkmetric.DefaultTemporalitySelector))
 		}
+	}
+	if otlpConfig.DefaultHistogramAggregation != nil {
+		switch *otlpConfig.DefaultHistogramAggregation {
+		case "explicit_bucket_histogram":
+			opts = append(opts, otlpmetricgrpc.WithAggregationSelector(aggregationPreferenceExplicitBucketHistogram))
+		case "base2_exponential_bucket_histogram":
+			opts = append(opts, otlpmetricgrpc.WithAggregationSelector(aggregationPreferenceExponentialHistogram))
+		}
+	}
 
 	return otlpmetricgrpc.New(ctx, opts...)
 }
